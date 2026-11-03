@@ -1,0 +1,10 @@
+<Project>
+  <!-- Configuración común a todos los proyectos. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Versión de Tekla Structures contra la que se compila. -->
+    <TeklaVersion Condition="'$(TeklaVersion)' == ''">2025.0.0</TeklaVersion>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Aplicación externa para Tekla Structures 2025 (Windows Forms).
+    Tekla 2025 usa .NET Framework 4.8, así que el programa también.
+    Compilar:  dotnet build -c Release
+    Otra versión de Tekla:  dotnet build -c Release -p:TeklaVersion=2024.0.4
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>TeklaPiezas</RootNamespace>
+    <AssemblyName>TeklaPiezas</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
+    <Product>Tekla Piezas</Product>
+    <Description>Lista, resume y revisa las piezas de un modelo de Tekla Structures.</Description>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <SatelliteResourceLanguages>es;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Permite compilar para .NET Framework 4.8 sin tenerlo instalado (también en Linux). -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+
+    <!-- Open API de Tekla, desde NuGet. No hace falta tener Tekla instalado para compilar. -->
+    <PackageReference Include="Tekla.Structures" Version="$(TeklaVersion)" />
+    <PackageReference Include="Tekla.Structures.Model" Version="$(TeklaVersion)" />
+    <PackageReference Include="Tekla.Structures.Catalogs" Version="$(TeklaVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Windows Forms de .NET Framework 4.8. -->
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TeklaPiezas.Core\TeklaPiezas.Core.csproj" />
+  </ItemGroup>
+
+</Project>

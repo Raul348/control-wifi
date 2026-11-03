@@ -1,0 +1,30 @@
+name: Compilar programa
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Pruebas
+        run: dotnet test tests/TeklaPiezas.Tests/TeklaPiezas.Tests.csproj -c Release
+
+      - name: Compilar para Tekla Structures 2025
+        run: dotnet build src/TeklaPiezas/TeklaPiezas.csproj -c Release -o dist/TeklaPiezas
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TeklaPiezas-Tekla2025
+          path: |
+            dist/TeklaPiezas/*.exe
+            dist/TeklaPiezas/*.exe.config
+            dist/TeklaPiezas/*.dll
