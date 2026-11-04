@@ -29,9 +29,17 @@ namespace VideoAudio
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
         };
 
-        // whisper.cpp: se busca el archivo whisper-bin-x64.zip en la última versión publicada.
-        private const string ApiWhisper = "https://api.github.com/repos/ggml-org/whisper.cpp/releases/latest";
-        private const string UrlWhisperFija = "https://github.com/ggml-org/whisper.cpp/releases/latest/download/whisper-bin-x64.zip";
+        // whisper.cpp: las versiones v* recientes ya no traen el programa para Windows; solo lo traen las versiones
+        // de desarrollo (b*) y las v1.7/v1.8 antiguas. Por eso se recorren todas las versiones, de la más nueva a la más
+        // antigua, y se usa la primera que tenga whisper-bin-x64.zip.
+        private const string ApiWhisper = "https://api.github.com/repos/ggml-org/whisper.cpp/releases?per_page=100";
+        private static readonly string[] UrlsWhisperFijas =
+        {
+            "https://github.com/ggml-org/whisper.cpp/releases/download/v1.7.6/whisper-bin-x64.zip",
+            "https://github.com/ggml-org/whisper.cpp/releases/download/v1.7.5/whisper-bin-x64.zip",
+            "https://github.com/ggml-org/whisper.cpp/releases/download/v1.7.4/whisper-bin-x64.zip",
+        };
+        public const string PaginaWhisper = "https://github.com/ggml-org/whisper.cpp/releases";
 
         // ------------------------------------------------------------------ ubicar
 
@@ -102,46 +110,78 @@ namespace VideoAudio
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex) { ultimo = ex; }
             }
-            throw new IOException("No se pudo descargar FFmpeg. " + (ultimo?.Message ?? ""), ultimo);
+            throw new IOException("No se pudo descargar FFmpeg (" + (ultimo?.Message ?? "") + ").", ultimo);
         }
 
         /// <summary>Descarga whisper.cpp (whisper-cli.exe y sus DLL).</summary>
         public static async Task<string> DescargarWhisper(IProgress<(long, long)> progreso, CancellationToken ct)
         {
-            string url = UrlWhisperFija;
+            var urls = new System.Collections.Generic.List<string>();
             try
             {
                 using (HttpClient c = Cliente())
                 {
                     string json = await c.GetStringAsync(ApiWhisper);
-                    Match m = Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"([^\"]*/whisper-bin-x64\\.zip)\"");
-                    if (m.Success) url = m.Groups[1].Value;
+                    // La lista viene de la versión más nueva a la más antigua.
+                    foreach (Match m in Regex.Matches(json, "\"browser_download_url\"\\s*:\\s*\"([^\"]*/whisper-bin-x64\\.zip)\""))
+                        if (!urls.Contains(m.Groups[1].Value)) urls.Add(m.Groups[1].Value);
                 }
             }
-            catch { /* si la API falla, se usa el enlace fijo */ }
+            catch { /* si la API falla, se usan los enlaces fijos */ }
+            urls.AddRange(UrlsWhisperFijas);
 
-            string zip = await Descargar(url, "whisper.zip", progreso, ct);
-            string destino = Path.Combine(Carpeta, "whisper");
-            // Se extraen todos los archivos de la carpeta donde está whisper-cli.exe (el .exe necesita sus DLL).
-            string carpetaExe = null;
-            using (ZipArchive z = ZipFile.OpenRead(zip))
+            string zip = null;
+            Exception ultimo = null;
+            foreach (string url in urls)
             {
-                ZipArchiveEntry exe = z.Entries.FirstOrDefault(e => e.Name.Equals("whisper-cli.exe", StringComparison.OrdinalIgnoreCase))
-                                      ?? z.Entries.FirstOrDefault(e => e.Name.Equals("main.exe", StringComparison.OrdinalIgnoreCase));
-                if (exe == null) throw new IOException("El archivo descargado de whisper.cpp no contiene whisper-cli.exe.");
-                carpetaExe = exe.FullName.Substring(0, exe.FullName.Length - exe.Name.Length);
+                try
+                {
+                    zip = await Descargar(url, "whisper.zip", progreso, ct);
+                    break;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { ultimo = ex; }
             }
-            ExtraerArchivos(zip, destino, e => e.StartsWith(carpetaExe, StringComparison.OrdinalIgnoreCase) && !e.EndsWith("/"));
+            if (zip == null)
+                throw new IOException("No se pudo descargar whisper.cpp (" + (ultimo?.Message ?? "sin enlaces") + ").", ultimo);
+
+            ExtraerWhisper(zip, Path.Combine(Carpeta, "whisper"));
             File.Delete(zip);
             string r = Whisper();
             if (r == null) throw new IOException("No se encontró whisper-cli.exe después de descargarlo.");
             return r;
         }
 
+        /// <summary>
+        /// Extrae whisper-cli.exe y todos los archivos de su misma carpeta del ZIP (el .exe necesita sus DLL).
+        /// Devuelve la ruta de whisper-cli.exe extraído.
+        /// </summary>
+        internal static string ExtraerWhisper(string zip, string destino)
+        {
+            string carpetaExe, nombreExe;
+            using (ZipArchive z = ZipFile.OpenRead(zip))
+            {
+                ZipArchiveEntry exe = z.Entries.FirstOrDefault(e => Normal(e.FullName).EndsWith("/whisper-cli.exe", StringComparison.OrdinalIgnoreCase) || Normal(e.FullName).Equals("whisper-cli.exe", StringComparison.OrdinalIgnoreCase))
+                                      ?? z.Entries.FirstOrDefault(e => Normal(e.FullName).EndsWith("/main.exe", StringComparison.OrdinalIgnoreCase));
+                if (exe == null) throw new IOException("El archivo descargado de whisper.cpp no contiene whisper-cli.exe.");
+                // PowerShell 5 guarda las rutas del ZIP con "\": se normalizan a "/" para comparar.
+                string ruta = Normal(exe.FullName);
+                carpetaExe = ruta.Substring(0, ruta.LastIndexOf('/') + 1);
+                nombreExe = ruta.Substring(carpetaExe.Length);
+            }
+            ExtraerArchivos(zip, destino, e => e.StartsWith(carpetaExe, StringComparison.OrdinalIgnoreCase) && !e.EndsWith("/"));
+            return Path.Combine(destino, nombreExe);
+        }
+
+        private static string Normal(string ruta) => ruta.Replace('\\', '/');
+
         /// <summary>Descarga un modelo de Whisper.</summary>
         public static async Task<string> DescargarModelo(ModeloWhisper m, IProgress<(long, long)> progreso, CancellationToken ct)
         {
-            string tmp = await Descargar(m.Url, m.Archivo + ".parcial", progreso, ct);
+            string tmp;
+            try { tmp = await Descargar(m.Url, m.Archivo + ".parcial", progreso, ct); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { throw new IOException("No se pudo descargar el modelo " + m.Archivo + " (" + ex.Message + ").", ex); }
             string destino = Path.Combine(Carpeta, "modelos", m.Archivo);
             Directory.CreateDirectory(Path.GetDirectoryName(destino));
             if (File.Exists(destino)) File.Delete(destino);
@@ -182,8 +222,10 @@ namespace VideoAudio
             {
                 foreach (ZipArchiveEntry e in z.Entries)
                 {
-                    if (e.Name == "" || !filtro(e.FullName.Replace('\\', '/'))) continue;
-                    e.ExtractToFile(Path.Combine(destino, e.Name), true);
+                    string ruta = Normal(e.FullName);
+                    string nombre = ruta.Substring(ruta.LastIndexOf('/') + 1);
+                    if (nombre == "" || !filtro(ruta)) continue;
+                    e.ExtractToFile(Path.Combine(destino, nombre), true);
                 }
             }
         }

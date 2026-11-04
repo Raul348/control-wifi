@@ -451,20 +451,43 @@ namespace VideoAudio
 
             if (_transcribir.Checked)
             {
-                c.Whisper = Herramientas.Whisper();
-                if (c.Whisper == null)
+                try
                 {
-                    if (!Preguntar("Para transcribir se necesita whisper.cpp, un programa gratuito (unos 5 MB).\n\n¿Descargarlo ahora? Solo se hace una vez.")) return false;
-                    _estado.Tag = "Descargando whisper.cpp…";
-                    c.Whisper = await Herramientas.DescargarWhisper(progreso, ct);
+                    c.Whisper = Herramientas.Whisper();
+                    if (c.Whisper == null)
+                    {
+                        if (!Preguntar("Para transcribir se necesita whisper.cpp, un programa gratuito (unos 5 MB).\n\n¿Descargarlo ahora? Solo se hace una vez.")) return false;
+                        _estado.Tag = "Descargando whisper.cpp…";
+                        c.Whisper = await Herramientas.DescargarWhisper(progreso, ct);
+                    }
+                    var modelo = (ModeloWhisper)_modelo.SelectedItem;
+                    c.Modelo = Herramientas.Modelo(modelo);
+                    if (c.Modelo == null)
+                    {
+                        if (!Preguntar("Falta el modelo de voz «" + modelo.Nombre + "» (" + modelo.Megas + " MB).\n\n¿Descargarlo ahora? Solo se hace una vez.")) return false;
+                        _estado.Tag = "Descargando el modelo " + modelo.Nombre + "…";
+                        c.Modelo = await Herramientas.DescargarModelo(modelo, progreso, ct);
+                    }
                 }
-                var modelo = (ModeloWhisper)_modelo.SelectedItem;
-                c.Modelo = Herramientas.Modelo(modelo);
-                if (c.Modelo == null)
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
                 {
-                    if (!Preguntar("Falta el modelo de voz «" + modelo.Nombre + "» (" + modelo.Megas + " MB).\n\n¿Descargarlo ahora? Solo se hace una vez.")) return false;
-                    _estado.Tag = "Descargando el modelo " + modelo.Nombre + "…";
-                    c.Modelo = await Herramientas.DescargarModelo(modelo, progreso, ct);
+                    // Sin Whisper igual se puede sacar el audio.
+                    string texto = ex.Message + "\n\nPuede ponerlo a mano: descargue whisper-bin-x64.zip de\n" + Herramientas.PaginaWhisper +
+                                   "\ny copie el contenido de su carpeta Release en:\n" + System.IO.Path.Combine(Herramientas.Carpeta, "whisper") +
+                                   (_audio.Checked ? "\n\n¿Continuar solo con el audio?" : "\n\n¿Abrir esa carpeta ahora?");
+                    var r = MessageBox.Show(this, texto, Program.Nombre, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (!_audio.Checked)
+                    {
+                        if (r == DialogResult.Yes)
+                        {
+                            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(Herramientas.Carpeta, "whisper"));
+                            Process.Start("explorer.exe", "\"" + System.IO.Path.Combine(Herramientas.Carpeta, "whisper") + "\"");
+                        }
+                        return false;
+                    }
+                    if (r != DialogResult.Yes) return false;
+                    _transcribir.Checked = false;
                 }
             }
             _estado.Tag = null;
