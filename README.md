@@ -6,6 +6,32 @@ Programas para aprender a automatizar **Tekla Structures** (Open API) y **Revit*
 |---|---|---|
 | [Tekla Piezas](#tekla-piezas) | Tekla Structures 2023 a 2026 | Lee el modelo, lista las piezas, hace el metrado y revisa errores antes de numerar |
 | [Perfiles AISC](#perfiles-aisc-para-revit) | Revit 2023 a 2027 | Catálogo de perfiles de acero con la interfaz de Tekla, y colocación de vigas y columnas |
+| [Video a Audio](#video-a-audio) | Windows 10 y 11 | Saca el audio de los videos y los transcribe a texto con Whisper |
+
+## Video a Audio
+
+Programa de Windows para sacar el audio de los videos y, si se quiere, **transcribir lo que se dice** a texto.
+Todo se hace en la PC, sin cuentas ni API de pago.
+
+- **Arrastre** uno o varios videos (o carpetas enteras) a la ventana, o use **Añadir videos**.
+- **Audio** en **MP3**, **M4A** o **WAV**, con calidad de 128 a 320 kbps.
+- **Texto** con **Whisper** (whisper.cpp): genera `.txt` y subtítulos `.srt`. Precisión *Rápido*, *Bueno* o *Muy bueno*;
+  idioma español, inglés, portugués o automático.
+- **Nunca reemplaza archivos**: si el nombre existe agrega `(2)`, `(3)`... y FFmpeg se ejecuta con `-n`, que se niega a escribir encima.
+- **Verifica la duración**: avisa si el audio dura menos que el video.
+- **Cancelar** borra el archivo a medias, nunca el video.
+- La primera vez **descarga solo** FFmpeg (unos 90 MB), whisper.cpp (unos 5 MB) y el modelo elegido (142 MB a 1,5 GB),
+  en `%LocalAppData%\VideoAudio`. También se pueden copiar a mano junto al programa.
+
+Usa .NET Framework 4.8, que ya viene con Windows 10 y 11: no hay que instalar nada.
+
+```
+src/VideoAudio.Core/   Argumentos de FFmpeg y Whisper, nombres de salida, lectura del avance (con pruebas, incluidas pruebas con FFmpeg real)
+src/VideoAudio/        Programa de Windows
+  Herramientas.cs      Ubica y descarga FFmpeg, whisper.cpp y los modelos
+  Conversor.cs         Ejecuta FFmpeg y Whisper, verifica el resultado y limpia si se cancela
+  MainForm.cs          Ventana
+```
 
 ## Perfiles AISC para Revit
 

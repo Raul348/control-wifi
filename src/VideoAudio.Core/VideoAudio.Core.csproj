@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Lógica sin interfaz: argumentos de FFmpeg y Whisper, nombres de salida y lectura del progreso.
+       netstandard2.0 sirve para el programa (.NET Framework 4.8) y para las pruebas (.NET 8). -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>VideoAudio.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>

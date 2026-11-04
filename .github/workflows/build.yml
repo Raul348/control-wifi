@@ -17,6 +17,25 @@ jobs:
         run: dotnet test tests/TeklaPiezas.Tests/TeklaPiezas.Tests.csproj -c Release
       - name: Pruebas de Perfiles AISC
         run: dotnet test tests/PerfilesAisc.Tests/PerfilesAisc.Tests.csproj -c Release
+      - name: Pruebas de Video a Audio (las de FFmpeg real se omiten si no está instalado)
+        run: dotnet test tests/VideoAudio.Tests/VideoAudio.Tests.csproj -c Release
+
+  videoaudio:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Compilar Video a Audio
+        run: dotnet build src/VideoAudio/VideoAudio.csproj -c Release -o dist/VideoAudio
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VideoAudio
+          path: |
+            dist/VideoAudio/*.exe
+            dist/VideoAudio/*.exe.config
+            dist/VideoAudio/*.dll
 
   tekla:
     runs-on: windows-latest
