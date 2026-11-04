@@ -57,6 +57,25 @@ namespace TeklaPiezas
             return lista;
         }
 
+        private static string Probar(Func<string> accion)
+        {
+            try { return accion() ?? "null"; }
+            catch (Exception ex) { return "ERROR " + Detalle(ex); }
+        }
+
+        /// <summary>Tipo y mensaje del error, con los errores internos.</summary>
+        private static string Detalle(Exception ex)
+        {
+            var sb = new StringBuilder();
+            int n = 0;
+            for (Exception e = ex; e != null && n < 4; e = e.InnerException, n++)
+            {
+                if (n > 0) sb.Append("  <-  ");
+                sb.Append(e.GetType().Name).Append(": ").Append(e.Message.Trim());
+            }
+            return sb.ToString();
+        }
+
         /// <summary>Busca un año 20xx en la ruta ("...\Tekla Structures\2025.0\bin") o en la versión.</summary>
         private static int? Anio(string texto)
         {
@@ -83,7 +102,20 @@ namespace TeklaPiezas
                 if (t.Ruta != "") sb.AppendLine("   " + t.Ruta);
                 if (t.SinAcceso) sb.AppendLine("   Windows no deja leer este proceso.");
             }
-            if (error != null) sb.AppendLine("Error: " + error.GetType().Name + ": " + error.Message);
+            if (error != null) sb.AppendLine("Error: " + Detalle(error));
+
+            // Pruebas directas de la Open API: muestran el error interno que GetConnectionStatus oculta.
+            sb.AppendLine();
+            sb.AppendLine("Pruebas de la Open API:");
+            sb.AppendLine("  Versión de Tekla: " + Probar(() => Tekla.Structures.TeklaStructuresInfo.GetCurrentProgramVersion()));
+            sb.AppendLine("  Compilación de Tekla: " + Probar(() => Tekla.Structures.TeklaStructuresInfo.GetBuildNumber()));
+            sb.AppendLine("  Model.GetConnectionStatus: " + Probar(() => new Tekla.Structures.Model.Model().GetConnectionStatus().ToString()));
+            sb.AppendLine("  Model.GetInfo: " + Probar(() =>
+            {
+                var info = new Tekla.Structures.Model.Model().GetInfo();
+                return info == null ? "null" : "\"" + info.ModelName + "\"";
+            }));
+            sb.AppendLine("  DLL de la API: " + typeof(Tekla.Structures.Model.Model).Assembly.Location);
 
             sb.AppendLine();
             sb.AppendLine("Causa más probable:");
@@ -99,9 +131,9 @@ namespace TeklaPiezas
                               $"Use el programa de la carpeta Tekla{anio}.");
             }
             else
-                sb.AppendLine("Tekla está abierto y la versión parece coincidir, pero la Open API no responde. Revise que el modelo " +
-                              "haya terminado de abrir y que no haya una ventana de Tekla esperando respuesta. Si sigue igual, " +
-                              "esa instalación de Tekla no está permitiendo la conexión de la Open API.");
+                sb.AppendLine("Tekla está abierto, la versión coincide y los permisos también, pero la Open API no responde. " +
+                              "Revise que el modelo haya terminado de abrir y que no haya una ventana de Tekla esperando respuesta. " +
+                              "Si sigue igual, las pruebas de arriba muestran el error interno.");
             return sb.ToString();
         }
     }
