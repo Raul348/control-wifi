@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        tekla: ["2023.0.1", "2024.0.4", "2025.0.0", "2026.0.3"]
     steps:
       - uses: actions/checkout@v4
 
@@ -18,12 +21,12 @@ jobs:
       - name: Pruebas
         run: dotnet test tests/TeklaPiezas.Tests/TeklaPiezas.Tests.csproj -c Release
 
-      - name: Compilar para Tekla Structures 2025
-        run: dotnet build src/TeklaPiezas/TeklaPiezas.csproj -c Release -o dist/TeklaPiezas
+      - name: Compilar para Tekla Structures ${{ matrix.tekla }}
+        run: dotnet build src/TeklaPiezas/TeklaPiezas.csproj -c Release -o dist/TeklaPiezas -p:TeklaVersion=${{ matrix.tekla }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TeklaPiezas-Tekla2025
+          name: TeklaPiezas-Tekla${{ matrix.tekla }}
           path: |
             dist/TeklaPiezas/*.exe
             dist/TeklaPiezas/*.exe.config

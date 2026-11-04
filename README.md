@@ -1,6 +1,7 @@
 # Automatización de Tekla Structures con C#
 
-Programas para aprender a automatizar **Tekla Structures 2025** con la **Open API** en C#.
+Programas para aprender a automatizar **Tekla Structures** con la **Open API** en C#.
+Se compilan para Tekla 2023, 2024, 2025 y 2026.
 Se avanza por pasos, de lo simple a lo complejo. El código está comentado en español.
 
 | Paso | Programa | Estado |
@@ -31,11 +32,19 @@ Es una **aplicación externa**: un `.exe` que se conecta al Tekla Structures que
   En el resumen selecciona todas las piezas de ese perfil.
 - **Exportar a Excel**: guarda la pestaña activa en CSV y lo abre en Excel.
 - **Solo acero**: oculta concreto, madera y otros materiales.
+- **Diagnóstico**: si no conecta, muestra la versión de Tekla abierta, la versión del programa y la causa más probable.
+
+### Si dice que no hay conexión con Tekla
+La Open API solo se conecta si se cumplen dos condiciones:
+- **Misma versión**: el programa de la carpeta `Tekla2025` solo funciona con Tekla 2025, y así con cada versión.
+- **Mismos permisos**: Tekla y el programa deben abrirse los dos como administrador, o ninguno.
+
+Pulse **Diagnóstico** y el programa le dirá cuál de las dos falla.
 
 ### Cómo probarlo
 1. En GitHub, abra **Actions → Compilar programa → la última ejecución**.
-2. Descargue el artefacto **TeklaPiezas-Tekla2025** y descomprímalo en una carpeta, por ejemplo `C:\TeklaPiezas`.
-3. Abra Tekla Structures 2025 con un modelo.
+2. Descargue el artefacto de su versión, por ejemplo **TeklaPiezas-Tekla2025.0.0**, y descomprímalo en una carpeta, por ejemplo `C:\TeklaPiezas`.
+3. Abra Tekla Structures con un modelo.
 4. Ejecute `TeklaPiezas.exe` y pulse **Leer todo el modelo**.
 
 Si Windows muestra *Windows protegió su PC*, pulse **Más información → Ejecutar de todas formas**: el programa no está firmado.

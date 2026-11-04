@@ -70,7 +70,7 @@ namespace TeklaPiezas
             var p = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Azul };
             p.Controls.Add(new Label
             {
-                Text = "Piezas del modelo", Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.White,
+                Text = "Piezas del modelo  ·  Tekla " + Diagnostico.VersionApi, Font = new Font("Segoe UI Semibold", 14f), ForeColor = Color.White,
                 AutoSize = true, Location = new Point(16, 7)
             });
             _lblModelo.ForeColor = AzulClaro;
@@ -91,6 +91,7 @@ namespace TeklaPiezas
             f.Controls.Add(Separador());
             f.Controls.Add(Boton("Seleccionar en Tekla", (s, e) => SeleccionarEnTekla()));
             f.Controls.Add(Boton("Exportar a Excel", (s, e) => Exportar()));
+            f.Controls.Add(Boton("Diagnóstico", (s, e) => MostrarDiagnostico(null)));
             f.Controls.Add(Separador());
             _chkSoloAcero.Margin = new Padding(4, 6, 12, 0);
             f.Controls.Add(_chkSoloAcero);
@@ -208,7 +209,8 @@ namespace TeklaPiezas
 
         // ================================================================== Tekla
 
-        private bool ComprobarConexion()
+        /// <param name="avisar">Si no hay conexión, muestra el diagnóstico en una ventana.</param>
+        private bool ComprobarConexion(bool avisar = false)
         {
             bool ok;
             try { ok = _tekla.Conectado; }
@@ -216,13 +218,15 @@ namespace TeklaPiezas
             {
                 // Pasa si las DLL de Tekla no coinciden con la versión abierta.
                 _lblModelo.Text = "No se pudo usar la Open API de Tekla: " + ex.Message;
+                if (avisar) MostrarDiagnostico(ex);
                 return false;
             }
 
             if (!ok)
             {
-                _lblModelo.Text = "Tekla Structures no está abierto, o no hay un modelo cargado.";
-                Estado("Abra un modelo en Tekla Structures 2025 y pulse \"Leer todo el modelo\".");
+                _lblModelo.Text = "No se pudo conectar con Tekla Structures " + Diagnostico.VersionApi + ". Pulse \"Diagnóstico\" para ver la causa.";
+                Estado("Abra un modelo en Tekla Structures " + Diagnostico.VersionApi + " y pulse \"Leer todo el modelo\".");
+                if (avisar) MostrarDiagnostico(null);
                 return false;
             }
             _lblModelo.Text = "Modelo: " + _tekla.NombreModelo + "   ·   " + _tekla.CarpetaModelo;
@@ -232,7 +236,7 @@ namespace TeklaPiezas
 
         private async Task Leer(bool seleccion)
         {
-            if (!ComprobarConexion()) return;
+            if (!ComprobarConexion(avisar: true)) return;
 
             Ocupado(true);
             Estado(seleccion ? "Leyendo las piezas seleccionadas…" : "Leyendo todas las piezas del modelo…");
@@ -257,7 +261,7 @@ namespace TeklaPiezas
 
         private async Task LeerCatalogo()
         {
-            if (!ComprobarConexion()) return;
+            if (!ComprobarConexion(avisar: true)) return;
             Ocupado(true);
             Estado("Leyendo el catálogo…");
             try
@@ -460,6 +464,16 @@ namespace TeklaPiezas
                     Estado("No se pudo guardar: " + ex.Message);
                 }
             }
+        }
+
+        // ================================================================== diagnóstico
+
+        private void MostrarDiagnostico(Exception error)
+        {
+            string texto = Diagnostico.Informe(error);
+            try { Clipboard.SetText(texto); } catch { /* el portapapeles puede estar ocupado */ }
+            MessageBox.Show(this, texto + "\n(Este texto ya se copió al portapapeles.)",
+                Program.Nombre + " - Diagnóstico", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ================================================================== ayudas
