@@ -29,6 +29,46 @@ namespace PerfilesAisc.UI
             }
         }
 
+        public static ImageSource CintaNave(int tam) => AImagen(Nave(tam));
+
+        private static ImageSource AImagen(Bitmap bmp)
+        {
+            using (bmp)
+            using (var ms = new MemoryStream())
+            {
+                bmp.Save(ms, ImageFormat.Png);
+                ms.Position = 0;
+                var img = new BitmapImage();
+                img.BeginInit();
+                img.CacheOption = BitmapCacheOption.OnLoad;
+                img.StreamSource = ms;
+                img.EndInit();
+                img.Freeze();
+                return img;
+            }
+        }
+
+        /// <summary>Pórtico con arco: dos columnas y un arco encima.</summary>
+        public static Bitmap Nave(int tam)
+        {
+            var bmp = new Bitmap(tam, tam);
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                float m = tam * 0.1f, w = tam - 2 * m, h = tam - 2 * m;
+                float grosor = tam >= 32 ? 3f : 2f;
+                using (var p = new Pen(Acero, grosor) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                {
+                    float yBase = m + h, yCol = m + h * 0.55f;
+                    g.DrawLine(p, m, yBase, m, yCol);
+                    g.DrawLine(p, m + w, yBase, m + w, yCol);
+                    // arco: semicírculo achatado
+                    g.DrawArc(p, m, m, w, 2 * (yCol - m), 180, 180);
+                }
+            }
+            return bmp;
+        }
+
         public static Bitmap SeccionI(int tam)
         {
             var bmp = new Bitmap(tam, tam);

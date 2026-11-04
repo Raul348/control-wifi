@@ -15,7 +15,7 @@ namespace PerfilesAisc.UI
     /// </summary>
     internal sealed class PerfilForm : Form
     {
-        public enum Accion { Ninguna, Viga, Columna }
+        public enum Accion { Ninguna, Viga, VigaCurva, Columna }
 
         public Accion AccionElegida { get; private set; }
         public Perfil PerfilElegido { get; private set; }
@@ -38,9 +38,13 @@ namespace PerfilesAisc.UI
         private readonly Label _estado = new Label { AutoSize = true, ForeColor = Gris };
         private Perfil _actual;
         private bool _cambiando;
+        private readonly bool _soloElegir;
 
-        public PerfilForm(string nombreInicial)
+        /// <param name="nombreInicial">Perfil que se muestra al abrir.</param>
+        /// <param name="soloElegir">Verdadero para elegir un perfil sin colocarlo (botón Aceptar en vez de Colocar).</param>
+        public PerfilForm(string nombreInicial, bool soloElegir = false)
         {
+            _soloElegir = soloElegir;
             Text = "Seleccionar perfil";
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.White;
@@ -66,7 +70,7 @@ namespace PerfilesAisc.UI
 
             _filtro.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { LlenarArbol(); e.SuppressKeyPress = true; } };
             _arbol.AfterSelect += (s, e) => { if (e.Node.Tag is Perfil p) Mostrar(p); };
-            _arbol.NodeMouseDoubleClick += (s, e) => { if (e.Node.Tag is Perfil) Elegir(Accion.Viga); };
+            _arbol.NodeMouseDoubleClick += (s, e) => { if (e.Node.Tag is Perfil) Elegir(_soloElegir ? Accion.Ninguna : Accion.Viga); };
             _imagen.Paint += (s, e) => Seccion.Dibujar(e.Graphics, new RectangleF(0, 0, _imagen.Width, _imagen.Height), _actual);
             _imagen.Resize += (s, e) => _imagen.Invalidate();
 
@@ -151,11 +155,17 @@ namespace PerfilesAisc.UI
         private Control CrearAbajo()
         {
             var p = new Panel { Dock = DockStyle.Bottom, Height = 50, BackColor = Fondo, Padding = new Padding(12, 10, 12, 10) };
-            var botones = new FlowLayoutPanel { Dock = DockStyle.Right, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Width = 520 };
+            var botones = new FlowLayoutPanel { Dock = DockStyle.Right, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Width = 640 };
             botones.Controls.Add(Boton("Cancelar", (s, e) => { DialogResult = DialogResult.Cancel; Close(); }));
             botones.Controls.Add(Boton("Copiar datos", (s, e) => Copiar()));
-            botones.Controls.Add(Boton("Colocar columna", (s, e) => Elegir(Accion.Columna)));
-            botones.Controls.Add(Boton("Colocar viga", (s, e) => Elegir(Accion.Viga), principal: true));
+            if (_soloElegir)
+                botones.Controls.Add(Boton("Aceptar", (s, e) => Elegir(Accion.Ninguna), principal: true));
+            else
+            {
+                botones.Controls.Add(Boton("Colocar columna", (s, e) => Elegir(Accion.Columna)));
+                botones.Controls.Add(Boton("Colocar viga curva", (s, e) => Elegir(Accion.VigaCurva)));
+                botones.Controls.Add(Boton("Colocar viga", (s, e) => Elegir(Accion.Viga), principal: true));
+            }
             _estado.Location = new Point(12, 16);
             p.Controls.Add(_estado);
             p.Controls.Add(botones);

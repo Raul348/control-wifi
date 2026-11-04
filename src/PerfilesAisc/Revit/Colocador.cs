@@ -107,6 +107,147 @@ namespace PerfilesAisc.Revit
             return Resumen(aviso, n, "columnas", perfil);
         }
 
+        /// <summary>Vigas curvas: dos extremos y una flecha. Arco vertical (techo) u horizontal (en planta).</summary>
+        public string ColocarVigasCurvas(Perfil perfil, double flechaM, bool vertical)
+        {
+            FamilySymbol tipo = ObtenerTipo(perfil, columna: false, out string aviso);
+            if (tipo == null) return aviso;
+            Level nivel = NivelActivo();
+            if (nivel == null) return "El proyecto no tiene niveles.";
+            double flecha = flechaM / 0.3048;
+
+            int n = 0;
+            try
+            {
+                while (true)
+                {
+                    XYZ p1 = _uidoc.Selection.PickPoint(Snaps, perfil.Nombre + ": primer extremo de la viga curva (Esc para terminar)");
+                    XYZ p2 = _uidoc.Selection.PickPoint(Snaps, perfil.Nombre + ": segundo extremo de la viga curva");
+                    double cuerda = p1.DistanceTo(p2);
+                    if (cuerda < 0.01) continue;
+                    if (flecha >= cuerda / 2) return "La flecha debe ser menor que la mitad de la distancia entre los extremos.";
+
+                    XYZ medio = (p1 + p2) / 2;
+                    XYZ direccion = (p2 - p1).Normalize();
+                    // Vertical: la flecha sube. Horizontal: la flecha va a la izquierda del sentido p1 → p2.
+                    XYZ hacia = vertical ? XYZ.BasisZ : XYZ.BasisZ.CrossProduct(direccion).Normalize();
+                    XYZ pasa = medio + hacia * flecha;
+
+                    using (var t = new Transaction(_doc, "Perfiles AISC - viga curva " + perfil.Nombre))
+                    {
+                        t.Start();
+                        if (!tipo.IsActive) tipo.Activate();
+                        _doc.Create.NewFamilyInstance(Arc.Create(p1, p2, pasa), tipo, nivel, StructuralType.Beam);
+                        t.Commit();
+                    }
+                    n++;
+                }
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException) { /* Esc: fin */ }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException ex)
+            {
+                return "No se pueden elegir puntos en esta vista. Use una vista de planta o de estructura.\n" + ex.Message;
+            }
+            return Resumen(aviso, n, "vigas curvas", perfil);
+        }
+
+        /// <summary>
+        /// Genera la nave completa. El usuario elige el punto de la primera columna y la dirección a lo largo de la nave;
+        /// la luz se extiende hacia la derecha de esa dirección (o hacia la izquierda con <paramref name="otroLado"/>).
+        /// </summary>
+        public string GenerarNave(ParametrosNave parametros, IDictionary<GrupoBarra, Perfil> perfiles, bool otroLado)
+        {
+            Level nivel = NivelActivo();
+            if (nivel == null) return "El proyecto no tiene niveles.";
+
+            // Tipos de Revit para cada grupo de barras
+            var avisos = new List<string>();
+            var tipos = new Dictionary<GrupoBarra, FamilySymbol>();
+            foreach (GrupoBarra g in Enum.GetValues(typeof(GrupoBarra)))
+            {
+                Perfil perfil = perfiles[PerfilDe(g)];
+                bool columna = g == GrupoBarra.Columna;
+                FamilySymbol tipo = ObtenerTipo(perfil, columna, out string aviso);
+                if (tipo == null) return aviso;
+                if (!string.IsNullOrEmpty(aviso) && !avisos.Contains(aviso)) avisos.Add(aviso);
+                tipos[g] = tipo;
+            }
+
+            XYZ origen, direccion;
+            try
+            {
+                origen = _uidoc.Selection.PickPoint(Snaps, "Nave: punto de la primera columna");
+                XYZ hacia = _uidoc.Selection.PickPoint(Snaps, "Nave: dirección a lo largo de la nave (hacia el último pórtico)");
+                direccion = new XYZ(hacia.X - origen.X, hacia.Y - origen.Y, 0);
+                if (direccion.GetLength() < 0.01) return "Los dos puntos no pueden coincidir.";
+                direccion = direccion.Normalize();
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return ""; }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException ex)
+            {
+                return "No se pueden elegir puntos en esta vista. Use una vista de planta o de estructura.\n" + ex.Message;
+            }
+
+            XYZ v = direccion;                                                   // a lo largo
+            XYZ u = otroLado ? XYZ.BasisZ.CrossProduct(v) : v.CrossProduct(XYZ.BasisZ);  // a lo ancho (luz)
+            const double m = 1 / 0.3048;
+            XYZ Punto(P3 q) => origen + u * (q.X * m) + v * (q.Y * m) + XYZ.BasisZ * (q.Z * m);
+
+            List<Barra> barras = Nave.Generar(parametros);
+            double baseOffset = origen.Z - nivel.Elevation;
+            int creadas = 0;
+            using (var t = new Transaction(_doc, "Perfiles AISC - nave curva"))
+            {
+                t.Start();
+                foreach (FamilySymbol tipo in tipos.Values.Distinct())
+                    if (!tipo.IsActive) tipo.Activate();
+
+                foreach (Barra b in barras)
+                {
+                    FamilySymbol tipo = tipos[b.Grupo];
+                    if (b.Grupo == GrupoBarra.Columna)
+                    {
+                        FamilyInstance col = _doc.Create.NewFamilyInstance(Punto(b.A), tipo, nivel, StructuralType.Column);
+                        col.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM)?.Set(baseOffset);
+                        col.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM)?.Set(nivel.Id);
+                        col.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM)?.Set(baseOffset + b.Longitud * m);
+                        creadas++;
+                        continue;
+                    }
+                    Curve curva = b.Curva ? (Curve)Arc.Create(Punto(b.A), Punto(b.B), Punto(b.Medio)) : Line.CreateBound(Punto(b.A), Punto(b.B));
+                    StructuralType uso = b.Grupo == GrupoBarra.Montante || b.Grupo == GrupoBarra.Diagonal || b.Grupo == GrupoBarra.Arriostre
+                        ? StructuralType.Brace : StructuralType.Beam;
+                    _doc.Create.NewFamilyInstance(curva, tipo, nivel, uso);
+                    creadas++;
+                }
+                t.Commit();
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Nave generada: " + creadas + " piezas.");
+            foreach (var r in Nave.Resumen(barras))
+                sb.AppendLine("  " + Nave.NombreGrupo(r.Grupo) + ": " + r.Cantidad + " × " + perfiles[PerfilDe(r.Grupo)].Nombre + "   (" + r.Longitud.ToString("N1") + " m)");
+            double peso = barras.Sum(b => b.Longitud * perfiles[PerfilDe(b.Grupo)].PesoKgM);
+            sb.AppendLine("Peso aproximado del acero: " + peso.ToString("N0") + " kg");
+            foreach (string a in avisos) sb.AppendLine().Append(a);
+            return sb.ToString();
+        }
+
+        /// <summary>Grupo de la ventana del que toma el perfil cada barra.</summary>
+        private static GrupoBarra PerfilDe(GrupoBarra g)
+        {
+            switch (g)
+            {
+                case GrupoBarra.Columna: return GrupoBarra.Columna;
+                case GrupoBarra.Arco:
+                case GrupoBarra.CordonSuperior:
+                case GrupoBarra.CordonInferior: return GrupoBarra.Arco;
+                case GrupoBarra.Correa:
+                case GrupoBarra.Amarre: return GrupoBarra.Correa;
+                default: return GrupoBarra.Diagonal;
+            }
+        }
+
         private static string Resumen(string aviso, int n, string que, Perfil perfil)
         {
             string texto = n == 0 ? "" : n + " " + que + " " + perfil.Nombre + " colocadas.";

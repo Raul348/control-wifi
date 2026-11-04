@@ -18,7 +18,7 @@ namespace PerfilesAisc
     public sealed class CmdPerfiles : IExternalCommand
     {
         /// <summary>Último perfil elegido, para que la ventana lo recuerde en la misma sesión.</summary>
-        private static string _ultimo = "W8X31";
+        private static string _ultimo = Ajustes.Leer("perfil", "W8X31");
 
         public Result Execute(ExternalCommandData data, ref string message, ElementSet elements)
         {
@@ -44,11 +44,25 @@ namespace PerfilesAisc
                     }
                     if (perfil == null) continue;
                     _ultimo = perfil.Nombre;
+                    Ajustes.Guardar("perfil", _ultimo);
 
                     var colocador = new Colocador(uidoc);
-                    string resultado = accion == PerfilForm.Accion.Viga
-                        ? colocador.ColocarVigas(perfil)
-                        : colocador.ColocarColumnas(perfil);
+                    string resultado;
+                    if (accion == PerfilForm.Accion.VigaCurva)
+                    {
+                        double flecha;
+                        bool vertical;
+                        using (var a = new ArcoForm(perfil.Nombre, Ajustes.Leer("flecha", 2.0)))
+                        {
+                            if (a.ShowDialog(ventana) != DialogResult.OK) continue;
+                            flecha = a.FlechaM;
+                            vertical = a.Vertical;
+                        }
+                        Ajustes.Guardar("flecha", flecha);
+                        resultado = colocador.ColocarVigasCurvas(perfil, flecha, vertical);
+                    }
+                    else if (accion == PerfilForm.Accion.Viga) resultado = colocador.ColocarVigas(perfil);
+                    else resultado = colocador.ColocarColumnas(perfil);
                     if (!string.IsNullOrEmpty(resultado))
                         TaskDialog.Show(App.Name, resultado);
                 }

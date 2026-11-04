@@ -27,6 +27,16 @@ namespace PerfilesAisc
                 Image = Iconos.Cinta(16),
             };
             panel.AddItem(boton);
+
+            var nave = new PushButtonData("PerfilesAiscNave", "Nave\ncurva", path, typeof(CmdNave).FullName)
+            {
+                ToolTip = "Nave industrial con cubierta en arco: columnas, arcos, correas y arriostres.",
+                LongDescription = "Indique luz, altura, flecha, número de pórticos y separación. El arco puede ser una viga curva, " +
+                                  "tramos rectos o una celosía en arco. Elija los perfiles del catálogo y dos puntos en el modelo.",
+                LargeImage = Iconos.CintaNave(32),
+                Image = Iconos.CintaNave(16),
+            };
+            panel.AddItem(nave);
             return Result.Succeeded;
         }
 

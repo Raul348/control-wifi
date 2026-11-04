@@ -21,7 +21,21 @@ Complemento de Revit con la misma ventana **Seleccionar perfil** de Tekla:
 - **Colocar viga** y **Colocar columna**: elija los puntos en el modelo; Esc termina y vuelve a la ventana.
   Si el tipo no existe en el proyecto, el programa lo **crea con las medidas del catálogo**; si la familia no está cargada,
   la busca en la biblioteca de Revit.
+- **Colocar viga curva**: dos extremos y la flecha del arco. Arco **vertical** (techo curvo) u **horizontal** (curva en planta).
 - **Copiar datos**: copia las tablas al portapapeles para pegarlas en Excel.
+
+### Nave curva
+El botón **Nave curva** genera una nave industrial completa con cubierta en arco a partir de:
+luz, altura de columnas, flecha del arco, número de pórticos y separación.
+
+- **Tipo de arco**: **viga curva** (un arco por pórtico, para perfiles curvados), **tramos rectos** (perfiles W que siguen el arco)
+  o **celosía en arco** (cordón superior e inferior paralelos, montantes verticales y diagonales), con el canto que indique.
+- **Correas** sobre el arco, **vigas de amarre** entre las cabezas de las columnas y **arriostres en cruz** en los vanos extremos,
+  en las paredes y en la cubierta.
+- **Perfiles** de cada grupo elegidos del catálogo: columnas, arco o cordones, correas y amarres, diagonales y arriostres.
+- La figura muestra el pórtico tipo con sus cotas, y abajo el resumen de barras y longitudes.
+- En el modelo se eligen dos puntos: la primera columna y la dirección a lo largo de la nave. Al final se muestra el
+  resumen con el peso aproximado del acero.
 
 Los datos son la base de perfiles **AISC edición 13** (1.575 perfiles), incrustada en el programa: no necesita archivos aparte.
 
@@ -48,7 +62,9 @@ src/PerfilesAisc/        Complemento de Revit
   CmdPerfiles.cs         Abre la ventana y coloca las piezas
   UI/PerfilForm.cs       Ventana "Seleccionar perfil"
   UI/Seccion.cs          Dibujo de la sección con sus cotas
-  Revit/Colocador.cs     Busca o crea el tipo en Revit y coloca vigas y columnas
+  UI/NaveForm.cs         Ventana de la nave curva con la figura del pórtico
+  Revit/Colocador.cs     Busca o crea el tipo en Revit; coloca vigas, vigas curvas, columnas y la nave completa
+src/PerfilesAisc.Core/Nave.cs   Geometría de la nave: arco, tramos, celosía, correas y arriostres (con pruebas)
 ```
 
 ## Tekla Piezas
