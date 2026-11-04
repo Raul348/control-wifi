@@ -116,11 +116,16 @@ namespace TeklaPiezas
                 return info == null ? "null" : "\"" + info.ModelName + "\"";
             }));
             sb.AppendLine("  DLL de la API: " + typeof(Tekla.Structures.Model.Model).Assembly.Location);
+            bool sinServicio = sb.ToString().Contains("because it does not exist");
 
             sb.AppendLine();
             sb.AppendLine("Causa más probable:");
             if (teklas.Count == 0)
                 sb.AppendLine("Tekla Structures no está abierto en este equipo.");
+            else if (sinServicio)
+                sb.AppendLine("Tekla está abierto, pero no está publicando el servicio de la Open API: el canal de conexión no existe. " +
+                              "El programa busca el canal correcto para su versión. En una instalación oficial de Tekla este servicio " +
+                              "se publica solo al abrir Tekla, y no hay nada que configurar.");
             else if (teklas.Exists(t => t.SinAcceso) && !admin)
                 sb.AppendLine("Tekla se abrió como administrador y este programa no. Cierre el programa, haga clic derecho en " +
                               "TeklaPiezas.exe y elija \"Ejecutar como administrador\". O abra Tekla sin permisos de administrador.");
