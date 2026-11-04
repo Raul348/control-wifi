@@ -1,4 +1,4 @@
-name: Compilar programa
+name: Compilar programas
 
 on:
   push:
@@ -6,24 +6,30 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  pruebas:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Pruebas de Tekla Piezas
+        run: dotnet test tests/TeklaPiezas.Tests/TeklaPiezas.Tests.csproj -c Release
+      - name: Pruebas de Perfiles AISC
+        run: dotnet test tests/PerfilesAisc.Tests/PerfilesAisc.Tests.csproj -c Release
+
+  tekla:
     runs-on: windows-latest
     strategy:
       matrix:
         tekla: ["2023.0.1", "2024.0.4", "2025.0.0", "2026.0.3"]
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-
-      - name: Pruebas
-        run: dotnet test tests/TeklaPiezas.Tests/TeklaPiezas.Tests.csproj -c Release
-
-      - name: Compilar para Tekla Structures ${{ matrix.tekla }}
+      - name: Compilar Tekla Piezas para Tekla Structures ${{ matrix.tekla }}
         run: dotnet build src/TeklaPiezas/TeklaPiezas.csproj -c Release -o dist/TeklaPiezas -p:TeklaVersion=${{ matrix.tekla }}
-
       - uses: actions/upload-artifact@v4
         with:
           name: TeklaPiezas-Tekla${{ matrix.tekla }}
@@ -31,3 +37,23 @@ jobs:
             dist/TeklaPiezas/*.exe
             dist/TeklaPiezas/*.exe.config
             dist/TeklaPiezas/*.dll
+
+  revit:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        revit: ["2023", "2024", "2025", "2026", "2027"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Compilar Perfiles AISC para Revit ${{ matrix.revit }}
+        shell: pwsh
+        run: ./build-revit.ps1 -Versions ${{ matrix.revit }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PerfilesAisc-Revit${{ matrix.revit }}
+          path: dist/Revit${{ matrix.revit }}

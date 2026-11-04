@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Catálogo de perfiles AISC sin dependencia de Revit: lectura de datos, árbol, unidades y búsqueda.
+       netstandard2.0 sirve para Revit 2023-2027 (.NET Framework 4.8, .NET 8 y .NET 10) y para las pruebas. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>PerfilesAisc.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Base de datos de perfiles AISC (edición 13), generada con tools/convertir_aisc.py. -->
+    <EmbeddedResource Include="Datos\perfiles_aisc.csv" LogicalName="perfiles_aisc.csv" />
+  </ItemGroup>
+
+</Project>

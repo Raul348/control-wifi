@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Perfiles AISC</Name>
+    <Assembly>PerfilesAisc\PerfilesAisc.dll</Assembly>
+    <AddInId>A1C7D3E2-5B64-4F8A-9E01-7C2D4B6F8A21</AddInId>
+    <FullClassName>PerfilesAisc.App</FullClassName>
+    <VendorId>ACERO</VendorId>
+    <VendorDescription>Perfiles AISC - catálogo de perfiles de acero con la interfaz de Tekla</VendorDescription>
+  </AddIn>
+</RevitAddIns>

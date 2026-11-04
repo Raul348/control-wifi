@@ -1,18 +1,70 @@
-# Automatización de Tekla Structures con C#
+# Automatización de Tekla Structures y Revit con C#
 
-Programas para aprender a automatizar **Tekla Structures** con la **Open API** en C#.
-Se compilan para Tekla 2023, 2024, 2025 y 2026.
+Programas para aprender a automatizar **Tekla Structures** (Open API) y **Revit** (Revit API) en C#.
+
+| Programa | Para | Qué hace |
+|---|---|---|
+| [Tekla Piezas](#tekla-piezas) | Tekla Structures 2023 a 2026 | Lee el modelo, lista las piezas, hace el metrado y revisa errores antes de numerar |
+| [Perfiles AISC](#perfiles-aisc-para-revit) | Revit 2023 a 2027 | Catálogo de perfiles de acero con la interfaz de Tekla, y colocación de vigas y columnas |
+
+## Perfiles AISC para Revit
+
+Complemento de Revit con la misma ventana **Seleccionar perfil** de Tekla:
+
+- **Árbol de perfiles** ordenado como en Tekla: *Perfiles I → W → W6 → W6X8.5*, con HP, W, M, S; ángulos L y 2L;
+  canales C y MC; perfiles T (WT, MT, ST); tubos redondos (HSS y Pipe) y tubos rectangulares (HSS).
+- **Nombre del perfil** con autocompletar y **filtro** con comodines (`W6X*`, `*X1/4`).
+- **Pestaña General**: tipo y subtipo, área, **figura de la sección a escala** con las letras h, b, s, t y r1,
+  y tabla de medidas: altura, ancho, espesor de alma, espesor de ala, radio, k, centro de gravedad...
+- **Pestaña Análisis**: área, peso por metro, inercias, módulos elásticos y plásticos, radios de giro, J y Cw.
+- **Unidades**: milímetros o pulgadas.
+- **Colocar viga** y **Colocar columna**: elija los puntos en el modelo; Esc termina y vuelve a la ventana.
+  Si el tipo no existe en el proyecto, el programa lo **crea con las medidas del catálogo**; si la familia no está cargada,
+  la busca en la biblioteca de Revit.
+- **Copiar datos**: copia las tablas al portapapeles para pegarlas en Excel.
+
+Los datos son la base de perfiles **AISC edición 13** (1.575 perfiles), incrustada en el programa: no necesita archivos aparte.
+
+### Instalación
+1. En GitHub, abra **Actions → Compilar programas → la última ejecución**.
+2. Descargue el artefacto de su versión, por ejemplo `PerfilesAisc-Revit2025`.
+3. Copie su contenido en `%AppData%\Autodesk\Revit\Addins\2025\` para que quede así:
+   ```
+   Addins\2025\PerfilesAisc.addin
+   Addins\2025\PerfilesAisc\PerfilesAisc.dll
+   Addins\2025\PerfilesAisc\PerfilesAisc.Core.dll
+   ```
+4. Abra Revit y acepte **Cargar siempre**. El botón **Perfiles AISC** aparece en la pestaña **ACERO**.
+
+Para compilarlo usted mismo: `.\build-revit.ps1` y `.\install-revit.ps1` (igual que en ACERO Refuerzo).
+Revit 2023 y 2024 usan .NET Framework 4.8; 2025 y 2026, .NET 8; 2027, .NET 10.
+
+### Estructura
+```
+src/PerfilesAisc.Core/   Catálogo: lectura de datos, árbol, unidades y filtro (se prueba sin Revit)
+  Datos/perfiles_aisc.csv  Base AISC generada con tools/convertir_aisc.py desde el Excel de AISC
+src/PerfilesAisc/        Complemento de Revit
+  App.cs                 Botón en la cinta
+  CmdPerfiles.cs         Abre la ventana y coloca las piezas
+  UI/PerfilForm.cs       Ventana "Seleccionar perfil"
+  UI/Seccion.cs          Dibujo de la sección con sus cotas
+  Revit/Colocador.cs     Busca o crea el tipo en Revit y coloca vigas y columnas
+```
+
+## Tekla Piezas
+
+Se compila para Tekla 2023, 2024, 2025 y 2026.
 Se avanza por pasos, de lo simple a lo complejo. El código está comentado en español.
 
 | Paso | Programa | Estado |
 |---|---|---|
-| 1 | **Tekla Piezas**: lee el modelo, lista las piezas, hace el metrado y revisa errores antes de numerar | Listo para probar |
+| 1 | Lee el modelo, lista las piezas, hace el metrado y revisa errores antes de numerar | Listo para probar |
 | 2 | Crear piezas: columnas y vigas desde una ventana | Pendiente |
 | 3 | Sustitución de perfiles por los disponibles en Perú | Pendiente |
 | 4 | Primer plugin: escalera marinera | Pendiente |
 | 5 | Uniones: placa base y cartelas | Pendiente |
 
-## Paso 1: Tekla Piezas
+### Paso 1
 
 Es una **aplicación externa**: un `.exe` que se conecta al Tekla Structures que está abierto en el mismo equipo.
 
@@ -42,7 +94,7 @@ La Open API solo se conecta si se cumplen dos condiciones:
 Pulse **Diagnóstico** y el programa le dirá cuál de las dos falla.
 
 ### Cómo probarlo
-1. En GitHub, abra **Actions → Compilar programa → la última ejecución**.
+1. En GitHub, abra **Actions → Compilar programas → la última ejecución**.
 2. Descargue el artefacto de su versión, por ejemplo **TeklaPiezas-Tekla2025.0.0**, y descomprímalo en una carpeta, por ejemplo `C:\TeklaPiezas`.
 3. Abra Tekla Structures con un modelo.
 4. Ejecute `TeklaPiezas.exe` y pulse **Leer todo el modelo**.
@@ -57,7 +109,7 @@ Necesita el [SDK de .NET 8](https://dotnet.microsoft.com/download). No hace falt
 .\build.ps1 -TeklaVersion 2024.0.4     # otra versión
 ```
 
-También puede abrir `TeklaAutomatizacion.sln` en Visual Studio 2022.
+También puede abrir `Automatizacion.sln` en Visual Studio 2022.
 
 ## Estructura del código
 
